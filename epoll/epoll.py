@@ -17,7 +17,7 @@ def flush_buf(fileno):
             thissendcount=ss[fileno].send(buf[fileno]['w'])
             if thissendcount:
                 sendcount+=thissendcount
-                buf['w']=buf['w'][thissendcount:]
+                buf[fileno]['w']=buf[fileno]['w'][thissendcount:]
             else:
                 return sendcount
     except socket.error as e:
