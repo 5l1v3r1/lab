@@ -4,16 +4,19 @@ import errno
 import select
 import socket
 
+ADDR=('::', 10000)
+
 ss={}
 buf={}
 ready={}
 s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(('::', 10000))
+s.bind(ADDR)
 s.listen(1)
 s.setblocking(0)
 p=select.epoll()
 p.register(s.fileno(), select.EPOLLIN|select.EPOLLOUT|select.EPOLLET)
+print('Lising on [%s]:%d' % ADDR)
 try:
     while True:
         events=p.poll()
@@ -40,7 +43,7 @@ try:
                         p.unregister(fileno)
                         ss[fileno].close()
                     else:
-                        buf[fileno]['w']+=b'Received: '+tmp
+                        buf[fileno]['w']+=b'Echo: '+tmp
                         try:
                             ss[fileno].sendall(buf[fileno]['w'])
                         except socket.error as e:
