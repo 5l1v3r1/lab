@@ -9,6 +9,26 @@ ADDR=('::', 10000)
 ss={}
 buf={}
 ready={}
+
+def flush_buf(fileno):
+    sendcount=0
+    try:
+        while ready[fileno] and buf[fileno]:
+            thissendcount=ss[fileno].send(buf[fileno]['w'])
+            if thissendcount:
+                sendcount+=thissendcount
+                buf['w']=buf['w'][thissendcount:]
+            else:
+                return sendcount
+    except socket.error as e:
+        print('Sending to %d failed after %d bytes.' % (fileno, sendcount))
+        if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+            ready[fileno]=False
+        else:
+            raise
+    print('%d bytes sent to %d' % (sendcount, fileno))
+    return sendcount
+
 s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind(ADDR)
@@ -22,13 +42,19 @@ try:
         events=p.poll()
         for fileno, event in events:
             if event & select.EPOLLHUP or event & select.EPOLLERR:
-                print('Closed %s' % fileno)
+                print('Closed %d.' % fileno)
                 p.unregister(fileno)
                 ss[fileno].close()
+                if fileno in ss:
+                    del ss[fileno]
+                if fileno in buf:
+                    del buf[fileno]
+                if fileno in ready:
+                    del ready[fileno]
             elif event & select.EPOLLIN:
                 if fileno==s.fileno():
                     sc, addr=s.accept()
-                    print('Accepted from [%s]:%d' % (addr[0], addr[1]))
+                    print('Accepted from [%s]:%d.' % (addr[0], addr[1]))
                     ss[sc.fileno()]=sc
                     sc.setblocking(0)
                     p.register(sc.fileno(), select.EPOLLIN|select.EPOLLOUT|select.EPOLLET)
@@ -37,31 +63,25 @@ try:
                 else:
                     tmp=ss[fileno].recv(1024)
                     buf[fileno]['r']+=tmp
-                    print('Received: %s' % repr(tmp.decode('utf-8', 'replace')))
-                    if not tmp:
-                        print('Closed %s' % fileno)
+                    if tmp:
+                        print('Received: %s' % repr(tmp.decode('utf-8', 'replace')))
+                        if not tmp.endswith('\n'):
+                            tmp+='\r\n'
+                        buf[fileno]['w']+=b'Echo: '+tmp
+                        flush_buf(fileno)
+                    else:
+                        print('Closed %d.' % fileno)
                         p.unregister(fileno)
                         ss[fileno].close()
-                    else:
-                        buf[fileno]['w']+=b'Echo: '+tmp
-                        try:
-                            ss[fileno].sendall(buf[fileno]['w'])
-                        except socket.error as e:
-                            if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
-                                ready[sc.fileno()]=False
-                            else:
-                                raise
-                        buf[fileno]['w']=b''
+                        if fileno in ss:
+                            del ss[fileno]
+                        if fileno in buf:
+                            del buf[fileno]
+                        if fileno in ready:
+                            del ready[fileno]
             elif event & select.EPOLLOUT:
-                print('%s is ready to write.' % fileno)
-                try:
-                    ss[fileno].sendall(buf[fileno]['w'])
-                except socket.error as e:
-                    if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
-                        ready[sc.fileno()]=False
-                    else:
-                        raise
-                buf[fileno]['w']=b''
+                print('%d is ready to write.' % fileno)
+                flush_buf(fileno)
 finally:
     p.unregister(s.fileno())
     p.close()
