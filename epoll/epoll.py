@@ -36,7 +36,7 @@ s.listen(1)
 s.setblocking(0)
 p=select.epoll()
 p.register(s.fileno(), select.EPOLLIN|select.EPOLLOUT|select.EPOLLET)
-print('Lising on [%s]:%d' % ADDR)
+print('Listening on [%s]:%d' % ADDR)
 try:
     while True:
         events=p.poll()
@@ -65,7 +65,7 @@ try:
                     buf[fileno]['r']+=tmp
                     if tmp:
                         print('Received: %s' % repr(tmp.decode('utf-8', 'replace')))
-                        if not tmp.endswith('\n'):
+                        if not tmp.endswith(b'\n'):
                             tmp+='\r\n'
                         buf[fileno]['w']+=b'Echo: '+tmp
                         flush_buf(fileno)
