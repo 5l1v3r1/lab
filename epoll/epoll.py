@@ -19,9 +19,10 @@ def flush_buf(fileno):
                 sendcount+=thissendcount
                 buf[fileno]['w']=buf[fileno]['w'][thissendcount:]
             else:
+                print('%d bytes sent to %d.' % (sendcount, fileno))
                 return sendcount
     except socket.error as e:
-        print('Sending to %d failed after %d bytes.' % (fileno, sendcount))
+        print('Sending to %d failed after %d bytes, %d left.' % (fileno, sendcount, len(buf[fileno]['w']))
         if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
             ready[fileno]=False
         else:
