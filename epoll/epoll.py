@@ -13,7 +13,7 @@ ready={}
 def flush_buf(fileno):
     sendcount=0
     try:
-        while ready[fileno] and buf[fileno]:
+        while not ready[fileno] and buf[fileno]:
             thissendcount=ss[fileno].send(buf[fileno]['w'])
             if thissendcount:
                 sendcount+=thissendcount
@@ -26,7 +26,7 @@ def flush_buf(fileno):
             ready[fileno]=False
         else:
             raise
-    print('%d bytes sent to %d' % (sendcount, fileno))
+    print('%d bytes sent to %d.' % (sendcount, fileno))
     return sendcount
 
 s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
