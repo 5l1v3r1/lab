@@ -13,7 +13,7 @@ ready={}
 def flush_buf(fileno):
     sendcount=0
     try:
-        while not ready[fileno] and buf[fileno]:
+        while not ready[fileno] and buf[fileno]['w']:
             thissendcount=ss[fileno].send(buf[fileno]['w'])
             if thissendcount:
                 sendcount+=thissendcount
