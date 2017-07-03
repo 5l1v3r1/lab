@@ -4,20 +4,21 @@ import errno
 import select
 import socket
 
-ADDR=('::', 10000)
+ADDR = ('::', 10000)
 
-ss={}
-buf={}
-ready={}
+ss = {}
+buf = {}
+ready = {}
+
 
 def flush_buf(fileno):
-    sendcount=0
+    sendcount = 0
     try:
         while not ready[fileno] and buf[fileno]['w']:
-            thissendcount=ss[fileno].send(buf[fileno]['w'])
+            thissendcount = ss[fileno].send(buf[fileno]['w'])
             if thissendcount:
-                sendcount+=thissendcount
-                buf[fileno]['w']=buf[fileno]['w'][thissendcount:]
+                sendcount += thissendcount
+                buf[fileno]['w'] = buf[fileno]['w'][thissendcount:]
             else:
                 print('%d bytes sent to %d.' % (sendcount, fileno))
                 return sendcount
@@ -36,7 +37,7 @@ s.bind(ADDR)
 s.listen(1)
 s.setblocking(0)
 p=select.epoll()
-p.register(s.fileno(), select.EPOLLIN|select.EPOLLOUT|select.EPOLLET)
+p.register(s.fileno(), select.EPOLLIN | select.EPOLLOUT | select.EPOLLET)
 print('Listening on [%s]:%d' % ADDR)
 try:
     while True:
@@ -53,22 +54,22 @@ try:
                 if fileno in ready:
                     del ready[fileno]
             elif event & select.EPOLLIN:
-                if fileno==s.fileno():
+                if fileno == s.fileno():
                     sc, addr=s.accept()
                     print('Accepted from [%s]:%d.' % (addr[0], addr[1]))
                     ss[sc.fileno()]=sc
                     sc.setblocking(0)
-                    p.register(sc.fileno(), select.EPOLLIN|select.EPOLLOUT|select.EPOLLET)
+                    p.register(sc.fileno(), select.EPOLLIN | select.EPOLLOUT | select.EPOLLET)
                     buf[sc.fileno()]={'r': b'', 'w': b'Welcome!\r\n'}
                     ready[sc.fileno()]=False
                 else:
                     tmp=ss[fileno].recv(1024)
-                    buf[fileno]['r']+=tmp
+                    buf[fileno]['r'] += tmp
                     if tmp:
                         print('Received: %s' % repr(tmp.decode('utf-8', 'replace')))
                         if not tmp.endswith(b'\n'):
-                            tmp+='\r\n'
-                        buf[fileno]['w']+=b'Echo: '+tmp
+                            tmp += '\r\n'
+                        buf[fileno]['w'] += b'Echo: ' + tmp
                         flush_buf(fileno)
                     else:
                         print('Closed %d.' % fileno)
